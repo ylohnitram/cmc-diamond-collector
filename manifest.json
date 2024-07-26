@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "CMC Diamond Collector",
+  "version": "1.0",
+  "description": "Automatically collects diamonds on CoinMarketCap.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://coinmarketcap.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
