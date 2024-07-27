@@ -1,5 +1,4 @@
 function isLoggedIn() {
-  // Hledáme obecné prvky, které naznačují, že uživatel je přihlášen
   const loginButton = [...document.querySelectorAll('button'), ...document.querySelectorAll('a')].find(el => el.textContent.includes('Log In') || el.textContent.includes('Sign In'));
   console.log('Checking login status: login button found =', loginButton !== undefined);
   return loginButton === undefined;
@@ -44,18 +43,23 @@ function collectDiamonds() {
     const observer = new MutationObserver((mutationsList, observer) => {
       for (let mutation of mutationsList) {
         if (mutation.type === 'childList' || mutation.type === 'attributes') {
-          const successMessage = document.querySelector('.success-message'); // Nahraďte správným selektorem, pokud existuje
-          if (successMessage && successMessage.innerText.toLowerCase().includes('success')) {
-            console.log('Diamond collected successfully!');
-            observer.disconnect(); // Zastaví sledování změn
-            chrome.storage.local.get('diamondCount', (data) => {
-              let newCount = (data.diamondCount || 0) + 1;
-              let currentTime = new Date().toISOString();
-              chrome.storage.local.set({ diamondCount: newCount, lastCollectTime: currentTime }, () => {
-                chrome.runtime.sendMessage({ type: 'updateStatus', status: 'Diamond collected!' });
-                chrome.runtime.sendMessage({ type: 'diamondCollected' });
+          // Kontrolujeme všechny textové uzly v dokumentu
+          const allTextNodes = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+          let node;
+          while (node = allTextNodes.nextNode()) {
+            if (node.nodeValue.toLowerCase().includes('you have collected')) {
+              console.log('Diamond collected successfully!');
+              observer.disconnect(); // Zastaví sledování změn
+              chrome.storage.local.get('diamondCount', (data) => {
+                let newCount = (data.diamondCount || 0) + 1;
+                let currentTime = new Date().toISOString();
+                chrome.storage.local.set({ diamondCount: newCount, lastCollectTime: currentTime }, () => {
+                  chrome.runtime.sendMessage({ type: 'updateStatus', status: 'Diamond collected!' });
+                  chrome.runtime.sendMessage({ type: 'diamondCollected' });
+                });
               });
-            });
+              return;
+            }
           }
         }
       }
