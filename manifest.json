@@ -7,7 +7,11 @@
     "storage",
     "activeTab",
     "scripting",
-    "notifications"
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://coinmarketcap.com/*"
   ],
   "background": {
     "service_worker": "background.js"

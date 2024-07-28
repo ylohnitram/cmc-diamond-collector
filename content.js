@@ -40,7 +40,7 @@ function collectDiamonds() {
   if (!isLoggedIn()) {
     console.log('User not logged in, notifying user...');
     notifyUserToLogin();
-    setTimeout(openLoginModal, 1000); // Pokusit se otevřít modální dialog pro přihlášení po 1 sekundě
+    setTimeout(openLoginModal, 1000); // Attempt to open login modal after 1 second
     detectSuccessfulLogin();
     return;
   }
@@ -49,7 +49,7 @@ function collectDiamonds() {
   chrome.runtime.sendMessage({ type: 'openDiamondPage' });
 }
 
-// Spusť funkci collectDiamonds po načtení stránky
+// Execute collectDiamonds function after the page loads
 window.addEventListener('load', () => {
-  setTimeout(collectDiamonds, 5000); // Počkej 5 sekund pro jistotu, že se stránka plně načte
+  collectDiamonds(); // Attempt to collect diamonds immediately after the page loads
 });

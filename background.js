@@ -1,11 +1,17 @@
+let diamondTabId = null;
+let diamondTabReloadInterval = 1800000; // 30 minut
+let stopReloading = false;
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log('CMC Diamond Collector installed.');
   resetDailyDiamonds();
   updateBadge();
+  startDiamondTabMonitoring(); // Začneme monitorovat stránku s diamanty
 });
 
 chrome.runtime.onStartup.addListener(() => {
   updateBadge();
+  startDiamondTabMonitoring(); // Začneme monitorovat stránku s diamanty při startu
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -36,20 +42,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       message: 'Please log in to CoinMarketCap to collect diamonds.',
       priority: 2
     });
+    sendResponse({ success: true });
   }
   if (request.type === 'openDiamondPage') {
-    chrome.tabs.create({ url: 'https://coinmarketcap.com/account/my-diamonds/' }, (newTab) => {
-      chrome.tabs.onUpdated.addListener(function diamondPageListener(tabId, changeInfo, tab) {
-        if (tabId === newTab.id && changeInfo.status === 'complete' && tab.url.includes('coinmarketcap.com/account/my-diamonds/')) {
-          chrome.scripting.executeScript({
-            target: { tabId: newTab.id },
-            files: ['collectDiamonds.js']
-          });
-          chrome.tabs.onUpdated.removeListener(diamondPageListener);
+    if (diamondTabId === null) {
+      openOrReloadDiamondPage();
+    } else {
+      console.log('Diamond tab is already open, not opening another.');
+    }
+    sendResponse({ success: true });
+  }
+  if (request.type === 'stopReloading') {
+    stopReloading = true;
+    sendResponse({ success: true });
+  }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab.url && changeInfo.status === 'complete' && tab.url.includes('coinmarketcap.com')) {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+  }
+
+  if (tabId === diamondTabId && changeInfo.status === 'complete' && tab.url.includes('coinmarketcap.com/account/my-diamonds')) {
+    console.log('Diamond tab loaded:', tabId);
+    // Počkej 30 sekund před spuštěním skriptu na stránce s diamanty
+    setTimeout(() => {
+      chrome.scripting.executeScript({
+        target: { tabId: diamondTabId },
+        files: ['collectDiamonds.js']
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('Failed to execute script in diamond tab:', chrome.runtime.lastError);
         }
       });
-    });
-    sendResponse({ success: true });
+    }, 30000); // Wait 30 seconds before executing the script
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+  if (tabId === diamondTabId) {
+    diamondTabId = null;
+    chrome.runtime.sendMessage({ type: 'openDiamondPage' });
   }
 });
 
@@ -80,5 +116,36 @@ function updateBadge() {
   });
 }
 
-// Reset denního počtu diamantů každý den
-setInterval(resetDailyDiamonds, 60 * 60 * 1000); // Každou hodinu kontrolujeme reset
+function openOrReloadDiamondPage() {
+  if (diamondTabId === null) {
+    chrome.tabs.create({ url: 'https://coinmarketcap.com/account/my-diamonds/', active: false }, (newTab) => {
+      diamondTabId = newTab.id;
+      stopReloading = false;
+      scheduleNextReload();
+    });
+  } else {
+    chrome.tabs.update(diamondTabId, { url: 'https://coinmarketcap.com/account/my-diamonds/', active: false }, (updatedTab) => {
+      stopReloading = false;
+      scheduleNextReload();
+    });
+  }
+}
+
+function scheduleNextReload() {
+  setTimeout(() => {
+    if (!stopReloading) {
+      openOrReloadDiamondPage();
+    }
+  }, diamondTabReloadInterval);
+}
+
+function startDiamondTabMonitoring() {
+  if (diamondTabId === null) {
+    openOrReloadDiamondPage();
+  } else {
+    scheduleNextReload();
+  }
+}
+
+// Reset daily diamond count every day
+setInterval(resetDailyDiamonds, 60 * 60 * 1000); // Check reset every hour
