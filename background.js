@@ -8,15 +8,6 @@ chrome.runtime.onStartup.addListener(() => {
   updateBadge();
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (tab.url && changeInfo.status === 'complete' && tab.url.includes('coinmarketcap.com')) {
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js']
-    });
-  }
-});
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'updateStatus') {
     chrome.storage.local.set({ status: request.status }, () => {
@@ -45,6 +36,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       message: 'Please log in to CoinMarketCap to collect diamonds.',
       priority: 2
     });
+  }
+  if (request.type === 'openDiamondPage') {
+    chrome.tabs.create({ url: 'https://coinmarketcap.com/account/my-diamonds/' }, (newTab) => {
+      chrome.tabs.onUpdated.addListener(function diamondPageListener(tabId, changeInfo, tab) {
+        if (tabId === newTab.id && changeInfo.status === 'complete' && tab.url.includes('coinmarketcap.com/account/my-diamonds/')) {
+          chrome.scripting.executeScript({
+            target: { tabId: newTab.id },
+            files: ['collectDiamonds.js']
+          });
+          chrome.tabs.onUpdated.removeListener(diamondPageListener);
+        }
+      });
+    });
+    sendResponse({ success: true });
   }
 });
 
