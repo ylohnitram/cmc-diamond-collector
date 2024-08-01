@@ -21,6 +21,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
   if (request.type === 'diamondCollected') {
+    console.log('diamondCollected message received.');
     updateDailyDiamonds();
   }
   if (request.type === 'resetDailyDiamonds') {
@@ -105,6 +106,7 @@ function updateDailyDiamonds() {
     let newCount = (data.dailyDiamonds || 0) + 1;
     chrome.storage.local.set({ dailyDiamonds: newCount }, () => {
       updateBadge();
+      console.log('Updated daily diamonds count:', newCount);
     });
   });
 }
@@ -113,6 +115,7 @@ function updateBadge() {
   chrome.storage.local.get(['dailyDiamonds'], (data) => {
     let badgeText = (data.dailyDiamonds || 0).toString();
     chrome.action.setBadgeText({ text: badgeText });
+    console.log('Badge updated to:', badgeText);
   });
 }
 

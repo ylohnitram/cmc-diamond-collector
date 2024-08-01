@@ -30,15 +30,22 @@ function collectDiamonds() {
             const allTextNodes = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
             let node;
             while (node = allTextNodes.nextNode()) {
-              if (node.nodeValue && node.nodeValue.toLowerCase().includes('you have collected')) {
-                console.log('Diamond collected successfully!');
+              if (node.nodeValue && node.nodeValue.toLowerCase().includes('yay, you\'ve collected')) {
+                const collectedDiamonds = parseInt(node.nodeValue.match(/\d+/)[0], 10);
+                console.log(`Diamond collected successfully! Collected ${collectedDiamonds} diamonds.`);
                 observer.disconnect(); // Stop observing
                 chrome.storage.local.get('diamondCount', (data) => {
-                  let newCount = (data.diamondCount || 0) + 1;
+                  let newCount = (data.diamondCount || 0) + collectedDiamonds;
                   let currentTime = new Date().toISOString();
                   chrome.storage.local.set({ diamondCount: newCount, lastCollectTime: currentTime }, () => {
                     chrome.runtime.sendMessage({ type: 'updateStatus', status: 'Diamond collected!' });
-                    chrome.runtime.sendMessage({ type: 'diamondCollected' });
+                    chrome.runtime.sendMessage({ type: 'diamondCollected' }, () => {
+                      if (chrome.runtime.lastError) {
+                        console.error('Error sending diamondCollected message:', chrome.runtime.lastError);
+                      } else {
+                        console.log('diamondCollected message sent successfully.');
+                      }
+                    });
                   });
                 });
                 return;
@@ -53,15 +60,16 @@ function collectDiamonds() {
 
     } else {
       console.log('Diamond button not found. Logging the entire HTML for debugging.');
+      console.log(document.documentElement.outerHTML); // Logování celé struktury HTML
       chrome.runtime.sendMessage({ type: 'updateStatus', status: 'Diamond button not found or not ready for collection.' });
     }
   }
 
   console.log('Page loaded, waiting before finding button...');
   setTimeout(() => {
-    console.log('5 seconds have passed, finding and clicking the button now.');
+    console.log('30 seconds have passed, finding and clicking the button now.');
     findAndClickButton();
-  }, 30000); // Wait 5 seconds to ensure the page fully loads
+  }, 30000); // Wait 30 seconds to ensure the page fully loads
 }
 
 // Execute collectDiamonds function
